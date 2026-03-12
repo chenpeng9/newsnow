@@ -1,10 +1,12 @@
 import process from "node:process"
 import { join } from "node:path"
+import { resolve } from "node:path"
 import viteNitro from "vite-plugin-with-nitro"
 import { RollopGlob } from "./tools/rollup-glob"
 import { projectDir } from "./shared/dir"
 
 const nitroOption: Parameters<typeof viteNitro>[0] = {
+  plugins: [resolve(projectDir, "server/plugins/scheduler")],
   experimental: {
     database: true,
   },
