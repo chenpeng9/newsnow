@@ -3,6 +3,7 @@ import type { ScoredItem } from "../intel/filter"
 
 const FEISHU_WEBHOOK = process.env.FEISHU_WEBHOOK
 const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK
+const WECOM_WEBHOOK = process.env.WECOM_WEBHOOK
 
 interface WebhookMessage {
   content?: string
@@ -133,10 +134,65 @@ export async function sendDiscordAlert(item: ScoredItem): Promise<void> {
 }
 
 /**
+ * Send high value alert to WeCom (Enterprise WeChat) using markdown_v2 format
+ */
+export async function sendWeComAlert(item: ScoredItem): Promise<void> {
+  if (!WECOM_WEBHOOK) {
+    console.warn("[Notify] WECOM_WEBHOOK not configured")
+    return
+  }
+
+  // First send the rich markdown_v2 message
+  const markdownMessage = {
+    msgtype: "markdown_v2",
+    markdown_v2: {
+      content: `🔔 AI情报高能预警 [${item.aiScore}分]
+
+${item.title}
+
+💡 ${item.aiSummary || "暂无摘要"}
+
+💬 ${item.aiComment || "无点评"}
+
+来源: ${item.extra?.info || "金十数据"} | 发布时间: ${item.pubDate || "未知"}
+
+<a href="${item.url}">查看原文</a>`,
+    },
+  }
+
+  // Then send a simple text reminder
+  const textMessage = {
+    msgtype: "text",
+    text: {
+      content: `🔔 您有新的AI情报高能预警，请查看上方详情`,
+    },
+  }
+
+  try {
+    await myFetch(WECOM_WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(markdownMessage),
+    })
+    console.log("[WeCom] Markdown alert sent:", item.title)
+
+    // Send follow-up text reminder
+    await myFetch(WECOM_WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(textMessage),
+    })
+    console.log("[WeCom] Reminder sent:", item.title)
+  } catch (error) {
+    console.error("[WeCom] Failed to send alert:", error)
+  }
+}
+
+/**
  * Send alert to all configured webhooks
  */
 export async function sendAlert(item: ScoredItem): Promise<void> {
-  await Promise.all([sendFeishuAlert(item), sendDiscordAlert(item)])
+  await Promise.all([sendFeishuAlert(item), sendWeComAlert(item)])
 }
 
 /**
@@ -151,9 +207,9 @@ export async function sendAlerts(items: ScoredItem[]): Promise<void> {
  */
 export async function testWebhooks(): Promise<{
   feishu: boolean
-  discord: boolean
+  wecom: boolean
 }> {
-  const results = { feishu: false, discord: false }
+  const results = { feishu: false, wecom: false }
 
   if (FEISHU_WEBHOOK) {
     try {
@@ -171,18 +227,19 @@ export async function testWebhooks(): Promise<{
     }
   }
 
-  if (DISCORD_WEBHOOK) {
+  if (WECOM_WEBHOOK) {
     try {
-      await myFetch(DISCORD_WEBHOOK, {
+      await myFetch(WECOM_WEBHOOK, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          content: "🔔 AI 情报管家测试消息",
+          msgtype: "markdown_v2",
+          markdown_v2: { content: "🔔 AI 情报管家测试消息" },
         }),
       })
-      results.discord = true
+      results.wecom = true
     } catch {
-      results.discord = false
+      results.wecom = false
     }
   }
 

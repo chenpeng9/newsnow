@@ -4,8 +4,11 @@ import { getters } from "../getters"
 import { processIntel } from "../intel/filter"
 import type { NewsItem } from "@shared/types"
 
-const BRIEFING_HOUR = 8
-const BRIEFING_MINUTE = 30
+// Daily briefing times: [hour, minute]
+const BRIEFING_TIMES = [
+  [8, 30],   // 08:30
+  [20, 0],   // 20:00
+]
 const CONCURRENCY_LIMIT = 5 // Max concurrent source fetches
 
 interface DailyBriefing {
@@ -268,12 +271,68 @@ function buildDiscordEmbeds(briefing: DailyBriefing): object[] {
 
   // Footer embed
   embeds.push({
-    title: "🤖 AI 情报管家",
+    title: "📰 新闻早知道",
     description: briefing.date,
     color: 0x666666,
   })
 
   return embeds
+}
+
+/**
+ * Build WeCom markdown_v2 content for briefing
+ */
+function buildWeComContent(briefing: DailyBriefing): string {
+  const lines: string[] = []
+
+  // Header
+  lines.push(`📰 新闻早知道 - ${briefing.date}`)
+  lines.push("")
+
+  // AI 动态
+  lines.push("📊 AI 动态")
+  const aiDynamics = briefing.aiDynamics as any[]
+  if (aiDynamics.length > 0) {
+    aiDynamics.forEach((item, idx) => {
+      const sourceInfo = getSourceInfo(item)
+      lines.push(`${idx + 1}. ${item.title} [${item.aiScore}分] ${sourceInfo}`)
+      lines.push(`   💡 ${item.aiSummary || "暂无摘要"}`)
+      lines.push(`   💬 ${item.aiComment || "无点评"}`)
+      lines.push(`   <a href=\"${item.url}\">查看原文</a>`)
+      lines.push("")
+    })
+  } else {
+    lines.push("   暂无")
+    lines.push("")
+  }
+
+  // 市场温度
+  lines.push("📈 市场温度")
+  lines.push(`   ${briefing.marketTemperature}`)
+  lines.push("")
+
+  // 全球视点
+  lines.push("🌍 全球视点")
+  const globalPerspectives = briefing.globalPerspectives as any[]
+  if (globalPerspectives.length > 0) {
+    globalPerspectives.forEach((item, idx) => {
+      const sourceInfo = getSourceInfo(item)
+      lines.push(`${idx + 1}. ${item.title} ${sourceInfo}`)
+      lines.push(`   💡 ${item.aiSummary || "暂无摘要"}`)
+      lines.push(`   💬 ${item.aiComment || "无点评"}`)
+      lines.push(`   <a href=\"${item.url}\">查看原文</a>`)
+      lines.push("")
+    })
+  } else {
+    lines.push("   暂无")
+    lines.push("")
+  }
+
+  // Footer
+  lines.push("---")
+  lines.push("由 早8🌞晚8🌛 Ai推送")
+
+  return lines.join("\n")
 }
 
 /**
@@ -310,6 +369,27 @@ export async function sendDailyBriefing(): Promise<void> {
       }),
     })
     console.log("[Briefing] Discord embed sent")
+  }
+
+  // Send to WeCom (markdown_v2 format)
+  const WECOM_WEBHOOK = process.env.WECOM_WEBHOOK
+  if (WECOM_WEBHOOK) {
+    const { myFetch } = await import("../utils/fetch")
+    const wecomContent = buildWeComContent(briefing)
+
+    try {
+      await myFetch(WECOM_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          msgtype: "markdown_v2",
+          markdown_v2: { content: wecomContent },
+        }),
+      })
+      console.log("[Briefing] WeCom message sent")
+    } catch (error: any) {
+      console.error("[Briefing] WeCom error:", error?.message || error)
+    }
   }
 
   console.log("[Briefing] Daily briefing sent")
@@ -415,6 +495,30 @@ export async function sendTestBriefing(): Promise<void> {
     console.log("[Test] Discord embed sent")
   }
 
+  // Send to WeCom
+  const WECOM_WEBHOOK = process.env.WECOM_WEBHOOK
+  console.log("[Test] WECOM_WEBHOOK:", WECOM_WEBHOOK ? "configured" : "NOT configured")
+  if (WECOM_WEBHOOK) {
+    const { myFetch } = await import("../utils/fetch")
+    const wecomContent = buildWeComContent(mockBriefing)
+
+    try {
+      await myFetch(WECOM_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          msgtype: "markdown_v2",
+          markdown_v2: { content: wecomContent },
+        }),
+      })
+      console.log("[Test] WeCom message sent")
+    } catch (error: any) {
+      console.error("[Test] WeCom error:", error?.message || error)
+    }
+  } else {
+    console.log("[Test] WECOM_WEBHOOK not configured, skipping")
+  }
+
   console.log("[Test] Test briefing sent")
 }
 
@@ -434,8 +538,14 @@ export function startScheduler(): void {
   // Check every minute if it's time for briefing
   schedulerInterval = setInterval(() => {
     const now = new Date()
+    const currentHour = now.getHours()
+    const currentMinute = now.getMinutes()
 
-    if (now.getHours() === BRIEFING_HOUR && now.getMinutes() === BRIEFING_MINUTE) {
+    const isBriefingTime = BRIEFING_TIMES.some(
+      ([hour, minute]) => hour === currentHour && minute === currentMinute
+    )
+
+    if (isBriefingTime) {
       console.log("[Scheduler] Triggering daily briefing...")
       sendDailyBriefing().catch(console.error)
     }
