@@ -59,8 +59,8 @@ async function parallelFetch<T>(
  * Generate daily briefing content
  */
 export async function generateDailyBriefing(): Promise<DailyBriefing> {
-  const now = new Date()
-  const dateStr = now.toISOString().split("T")[0]
+  const currentTime = new Date()
+  const dateStr = currentTime.toISOString().split("T")[0]
 
   // Get all source IDs from A category only (深度/专业级)
   const categories = [intelCategories.A]
@@ -91,7 +91,6 @@ export async function generateDailyBriefing(): Promise<DailyBriefing> {
   const sorted = [...scored].sort((a, b) => b.aiScore - a.aiScore)
 
   // Filter by freshness (within last 12 hours) before AI category filter
-  const now = Date.now()
   const freshItems = sorted.filter((item) => {
     const publishTime = item.pubDate || item.extra?.date
     if (!publishTime) return false
@@ -100,7 +99,7 @@ export async function generateDailyBriefing(): Promise<DailyBriefing> {
       ? new Date(publishTime).getTime()
       : (publishTime as number) || 0
 
-    return now - publishDate <= FRESHNESS_WINDOW_MS
+    return currentTime.getTime() as number - publishDate <= FRESHNESS_WINDOW_MS
   })
 
   console.log(`[Briefing] Freshness filter: ${sorted.length} → ${freshItems.length} items (removed ${sorted.length - freshItems.length} old news)`)
