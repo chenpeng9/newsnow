@@ -657,9 +657,9 @@ export async function sendTestBriefing(): Promise<void> {
   if (WECOM_WEBHOOK) {
     const { myFetch } = await import("../utils/fetch")
 
-    // Send AI Dynamics (max 5 items)
+    // Send AI Dynamics (no limit)
     if (mockBriefing.aiDynamics.length > 0) {
-      const aiItems = mockBriefing.aiDynamics.slice(0, 5)
+      const aiItems = mockBriefing.aiDynamics
       const aiContent = buildWeComCategoryContent("🤖 AI 动态", aiItems, mockBriefing.date, false)
       console.log("[Test] WeCom AI Dynamics:", aiItems.length, "items, content length:", aiContent.length)
 
@@ -678,9 +678,9 @@ export async function sendTestBriefing(): Promise<void> {
       }
     }
 
-    // Send Finance Market (max 5 items)
+    // Send Finance Market (no limit)
     if (mockBriefing.financeMarket.length > 0) {
-      const financeItems = mockBriefing.financeMarket.slice(0, 5)
+      const financeItems = mockBriefing.financeMarket
       const financeContent = buildWeComCategoryContent("💰 财经市场", financeItems, mockBriefing.date, false)
       console.log("[Test] WeCom Finance Market:", financeItems.length, "items, content length:", financeContent.length)
 
