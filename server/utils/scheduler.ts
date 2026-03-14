@@ -18,6 +18,9 @@ interface DailyBriefing {
   financeMarket: ScoredItem[]
   marketTemperature: string
   globalPerspectives: ScoredItem[]
+  sourceIds: string[]
+  allItems: NewsItem[]
+  scored: ScoredItem[]
 }
 
 /**
@@ -84,7 +87,7 @@ export async function generateDailyBriefing(): Promise<DailyBriefing> {
   // Sort by score
   const sorted = [...scored].sort((a, b) => b.aiScore - a.aiScore)
 
-  // Select items by AI category with score >= 80
+  // Select items by AI category with score >= 85
   const aiDynamics = sorted.filter((item) => item.aiScore >= 85 && item.aiCategory === "AI动态")
   const financeMarket = sorted.filter((item) => item.aiScore >= 85 && item.aiCategory === "财经市场")
   const globalPerspectives = sorted.filter((item) => item.aiScore >= 85 && item.aiCategory === "全球视点")
@@ -96,6 +99,9 @@ export async function generateDailyBriefing(): Promise<DailyBriefing> {
     financeMarket,
     marketTemperature,
     globalPerspectives,
+    sourceIds,
+    allItems,
+    scored,
   }
 }
 
@@ -486,12 +492,17 @@ export async function sendDailyBriefing(): Promise<void> {
     }
 
     // Send summary text reminder
-    const summaryContent = `📰 新闻早知道完成！
-AI动态: ${briefing.aiDynamics.length}条
-财经市场: ${briefing.financeMarket.length}条
-全球视点: ${briefing.globalPerspectives.length}条
+    const aiPushed = aiItems.length || 0
+    const financePushed = financeItems.length || 0
+    const globalPushed = globalItems.length || 0
+    const totalPushed = aiPushed + financePushed + globalPushed
 
-由 早8🌞晚8🌛 Ai推送`
+    const summaryContent = `📰 本次新闻来自${briefing.sourceIds.length}个渠道，${briefing.allItems.length}条信息，过滤推送：
+AI动态: ${aiPushed}条
+财经市场: ${financePushed}条
+全球视点: ${globalPushed}条
+
+由 早8晚8💰 Ai推送`
     console.log("[Briefing] WeCom summary content length:", summaryContent.length)
 
     try {
@@ -692,12 +703,17 @@ export async function sendTestBriefing(): Promise<void> {
     }
 
     // Send summary text reminder
-    const summaryContent = `📰 新闻早知道完成！
-AI动态: ${mockBriefing.aiDynamics.length}条
-财经市场: ${mockBriefing.financeMarket.length}条
-全球视点: ${mockBriefing.globalPerspectives.length}条
+    const aiPushed = mockBriefing.aiDynamics.length > 0 ? Math.min(5, mockBriefing.aiDynamics.length) : 0
+    const financePushed = mockBriefing.financeMarket.length > 0 ? Math.min(5, mockBriefing.financeMarket.length) : 0
+    const globalPushed = mockBriefing.globalPerspectives.length > 0 ? Math.min(5, mockBriefing.globalPerspectives.length) : 0
+    const totalPushed = aiPushed + financePushed + globalPushed
 
-由 早8🌞晚8🌛 Ai推送`
+    const summaryContent = `📰 本次新闻来自5个渠道，12条信息，过滤推送：
+AI动态: ${aiPushed}条
+财经市场: ${financePushed}条
+全球视点: ${globalPushed}条
+
+由 早8晚8💰 Ai推送`
     console.log("[Test] WeCom summary content length:", summaryContent.length)
 
     try {
