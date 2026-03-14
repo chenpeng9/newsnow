@@ -53,6 +53,7 @@ const comprehensiveNews = defineSource(async () => {
     title: news.title,
     url: news.link_info.url,
     extra: {
+      info: "腾讯新闻",
       hover: news.desc,
     },
   }))

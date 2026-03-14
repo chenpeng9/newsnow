@@ -19,6 +19,7 @@ export default defineSource(async () => {
         title,
         id: url,
         pubDate: parseRelativeDate(date, "Asia/Shanghai").valueOf(),
+        extra: { info: "Solidot" },
       })
     }
   })

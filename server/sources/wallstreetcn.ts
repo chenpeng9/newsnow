@@ -40,6 +40,7 @@ const live = defineSource(async () => {
         id: k.id,
         title: k.title || k.content_text,
         extra: {
+          info: "华尔街见闻",
           date: k.display_time * 1000,
         },
         url: k.uri,
@@ -58,6 +59,7 @@ const news = defineSource(async () => {
         id: h.id,
         title: h.title || h.content_short,
         extra: {
+          info: "华尔街见闻",
           date: h.display_time * 1000,
         },
         url: h.uri,
@@ -75,6 +77,7 @@ const hot = defineSource(async () => {
         id: h.id,
         title: h.title!,
         url: h.uri,
+        extra: { info: "华尔街见闻" },
       }
     })
 })

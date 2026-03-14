@@ -3,6 +3,7 @@ import { intelCategories } from "@shared/intel-categories"
 import { getters } from "../getters"
 import { processIntel } from "../intel/filter"
 import type { NewsItem } from "@shared/types"
+import process from "node:process"
 
 // Daily briefing times: [hour, minute]
 const BRIEFING_TIMES = [
@@ -14,6 +15,7 @@ const CONCURRENCY_LIMIT = 5 // Max concurrent source fetches
 interface DailyBriefing {
   date: string
   aiDynamics: ScoredItem[]
+  financeMarket: ScoredItem[]
   marketTemperature: string
   globalPerspectives: ScoredItem[]
 }
@@ -82,38 +84,25 @@ export async function generateDailyBriefing(): Promise<DailyBriefing> {
   // Sort by score
   const sorted = [...scored].sort((a, b) => b.aiScore - a.aiScore)
 
-  // Select top items for each section
-  const aiDynamics = sorted.filter((item) => item.aiScore >= 60).slice(0, 3)
+  // Select items by AI category with score >= 80
+  const aiDynamics = sorted.filter((item) => item.aiScore >= 85 && item.aiCategory === "AI动态")
+  const financeMarket = sorted.filter((item) => item.aiScore >= 85 && item.aiCategory === "财经市场")
+  const globalPerspectives = sorted.filter((item) => item.aiScore >= 85 && item.aiCategory === "全球视点")
   const marketTemperature = generateMarketSummary(sorted)
-  const globalPerspectives = sorted
-    .filter(
-      (item) =>
-        item.aiScore >= 50 &&
-        (item.title.includes("国际") ||
-          item.title.includes("全球") ||
-          item.title.includes("美国") ||
-          item.title.includes("欧洲"))
-    )
-    .slice(0, 3)
 
   return {
     date: dateStr,
     aiDynamics,
+    financeMarket,
     marketTemperature,
     globalPerspectives,
   }
 }
 
 function generateMarketSummary(items: ScoredItem[]): string {
-  // Simple heuristic based on recent financial news
+  // Use AI category for financial market
   const financialItems = items.filter(
-    (item) =>
-      item.aiScore >= 50 &&
-      (item.title.includes("降息") ||
-        item.title.includes("加息") ||
-        item.title.includes("美联储") ||
-        item.title.includes("财报") ||
-        item.title.includes("股"))
+    (item) => item.aiScore >= 85 && item.aiCategory === "财经市场"
   )
 
   if (financialItems.length === 0) {
@@ -162,58 +151,185 @@ function getSourceInfo(item: any): string {
 function buildFeishuCard(briefing: DailyBriefing): object {
   const elements: any[] = []
 
-  // Add each news item as card elements
-  briefing.aiDynamics.forEach((item) => {
-    const sourceInfo = getSourceInfo(item)
-
-    // Title with score
+  // AI 动态
+  if (briefing.aiDynamics.length > 0) {
     elements.push({
       tag: "div",
       text: {
         tag: "lark_md",
-        content: `**${item.title}** [${item.aiScore}分] ${sourceInfo}`,
+        content: "**🤖 AI 动态**",
       },
     })
+    briefing.aiDynamics.forEach((item) => {
+      const sourceInfo = getSourceInfo(item)
 
-    // Summary (core content)
-    elements.push({
-      tag: "div",
-      text: {
-        tag: "lark_md",
-        content: `💡 ${item.aiSummary || "暂无摘要"}`,
-      },
-    })
-
-    // Comment
-    elements.push({
-      tag: "div",
-      text: {
-        tag: "lark_md",
-        content: `💬 ${item.aiComment || "暂无点评"}`,
-      },
-    })
-
-    // Button with link
-    elements.push({
-      tag: "action",
-      actions: [
-        {
-          tag: "button",
-          text: {
-            tag: "plain_text",
-            content: "查看原文",
-          },
-          type: "primary",
-          url: item.url,
+      elements.push({
+        tag: "div",
+        text: {
+          tag: "lark_md",
+          content: `**${item.title}** [${item.aiScore}分] ${sourceInfo}`,
         },
-      ],
-    })
+      })
 
-    // HR separator
-    elements.push({
-      tag: "hr",
+      elements.push({
+        tag: "div",
+        text: {
+          tag: "lark_md",
+          content: `💡 ${item.aiSummary || "暂无摘要"}`,
+        },
+      })
+
+      elements.push({
+        tag: "div",
+        text: {
+          tag: "lark_md",
+          content: `💬 ${item.aiComment || "暂无点评"}`,
+        },
+      })
+
+      elements.push({
+        tag: "action",
+        actions: [
+          {
+            tag: "button",
+            text: {
+              tag: "plain_text",
+              content: "查看原文",
+            },
+            type: "primary",
+            url: item.url,
+          },
+        ],
+      })
+
+      elements.push({
+        tag: "hr",
+      })
     })
+  }
+
+  // 财经市场
+  if (briefing.financeMarket.length > 0) {
+    elements.push({
+      tag: "div",
+      text: {
+        tag: "lark_md",
+        content: "**💰 财经市场**",
+      },
+    })
+    briefing.financeMarket.forEach((item) => {
+      const sourceInfo = getSourceInfo(item)
+
+      elements.push({
+        tag: "div",
+        text: {
+          tag: "lark_md",
+          content: `**${item.title}** [${item.aiScore}分] ${sourceInfo}`,
+        },
+      })
+
+      elements.push({
+        tag: "div",
+        text: {
+          tag: "lark_md",
+          content: `💡 ${item.aiSummary || "暂无摘要"}`,
+        },
+      })
+
+      elements.push({
+        tag: "div",
+        text: {
+          tag: "lark_md",
+          content: `💬 ${item.aiComment || "暂无点评"}`,
+        },
+      })
+
+      elements.push({
+        tag: "action",
+        actions: [
+          {
+            tag: "button",
+            text: {
+              tag: "plain_text",
+              content: "查看原文",
+            },
+            type: "primary",
+            url: item.url,
+          },
+        ],
+      })
+
+      elements.push({
+        tag: "hr",
+      })
+    })
+  }
+
+  // 市场温度
+  elements.push({
+    tag: "div",
+    text: {
+      tag: "lark_md",
+      content: `**📈 市场温度**\n${briefing.marketTemperature}`,
+    },
   })
+
+  // 全球视点
+  if (briefing.globalPerspectives.length > 0) {
+    elements.push({
+      tag: "div",
+      text: {
+        tag: "lark_md",
+        content: "**🌍 全球视点**",
+      },
+    })
+    briefing.globalPerspectives.forEach((item) => {
+      const sourceInfo = getSourceInfo(item)
+
+      elements.push({
+        tag: "div",
+        text: {
+          tag: "lark_md",
+          content: `**${item.title}** [${item.aiScore}分] ${sourceInfo}`,
+        },
+      })
+
+      elements.push({
+        tag: "div",
+        text: {
+          tag: "lark_md",
+          content: `💡 ${item.aiSummary || "暂无摘要"}`,
+        },
+      })
+
+      elements.push({
+        tag: "div",
+        text: {
+          tag: "lark_md",
+          content: `💬 ${item.aiComment || "暂无点评"}`,
+        },
+      })
+
+      elements.push({
+        tag: "action",
+        actions: [
+          {
+            tag: "button",
+            text: {
+              tag: "plain_text",
+              content: "查看原文",
+            },
+            type: "primary",
+            url: item.url,
+          },
+        ],
+      })
+
+      elements.push({
+        tag: "hr",
+      })
+    })
+  }
 
   return {
     msg_type: "interactive",
@@ -231,74 +347,28 @@ function buildFeishuCard(briefing: DailyBriefing): object {
 }
 
 /**
- * Build Discord embeds for daily briefing
+ * Build WeCom markdown_v2 content for a single category
  */
-function buildDiscordEmbeds(briefing: DailyBriefing): object[] {
-  const embeds: object[] = []
-
-  // AI 动态
-  const aiDynDesc = briefing.aiDynamics.length > 0
-    ? briefing.aiDynamics.map((item, idx) => {
-        const sourceInfo = getSourceInfo(item)
-        return `**${idx + 1}.** [${item.title}](${item.url}) [${item.aiScore}分] ${sourceInfo}\n💡 ${item.aiSummary || "暂无摘要"}\n💬 ${item.aiComment || "无点评"}`
-      }).join("\n\n")
-    : "暂无"
-  embeds.push({
-    title: "🤖 AI 动态",
-    description: aiDynDesc,
-    color: 0x0099FF,
-  })
-
-  // 市场温度
-  embeds.push({
-    title: "📈 市场温度",
-    description: briefing.marketTemperature,
-    color: 0x66CC66,
-  })
-
-  // 全球视点
-  const globalDesc = briefing.globalPerspectives.length > 0
-    ? briefing.globalPerspectives.map((item, idx) => {
-        const sourceInfo = getSourceInfo(item)
-        return `**${idx + 1}.** [${item.title}](${item.url}) ${sourceInfo}\n💡 ${item.aiSummary || "暂无摘要"}\n💬 ${item.aiComment || "无点评"}`
-      }).join("\n\n")
-    : "暂无"
-  embeds.push({
-    title: "🌍 全球视点",
-    description: globalDesc,
-    color: 0xFFAA00,
-  })
-
-  // Footer embed
-  embeds.push({
-    title: "📰 新闻早知道",
-    description: briefing.date,
-    color: 0x666666,
-  })
-
-  return embeds
-}
-
-/**
- * Build WeCom markdown_v2 content for briefing
- */
-function buildWeComContent(briefing: DailyBriefing): string {
+function buildWeComCategoryContent(
+  title: string,
+  items: ScoredItem[],
+  date: string,
+  withFooter: boolean = true
+): string {
   const lines: string[] = []
 
   // Header
-  lines.push(`📰 新闻早知道 - ${briefing.date}`)
+  lines.push(`${title} - ${date}`)
   lines.push("")
 
-  // AI 动态
-  lines.push("📊 AI 动态")
-  const aiDynamics = briefing.aiDynamics as any[]
-  if (aiDynamics.length > 0) {
-    aiDynamics.forEach((item, idx) => {
+  // Items
+  if (items.length > 0) {
+    items.forEach((item, idx) => {
       const sourceInfo = getSourceInfo(item)
       lines.push(`${idx + 1}. ${item.title} [${item.aiScore}分] ${sourceInfo}`)
       lines.push(`   💡 ${item.aiSummary || "暂无摘要"}`)
       lines.push(`   💬 ${item.aiComment || "无点评"}`)
-      lines.push(`   <a href=\"${item.url}\">查看原文</a>`)
+      lines.push(`   <a href="${item.url}">查看原文</a>`)
       lines.push("")
     })
   } else {
@@ -306,31 +376,11 @@ function buildWeComContent(briefing: DailyBriefing): string {
     lines.push("")
   }
 
-  // 市场温度
-  lines.push("📈 市场温度")
-  lines.push(`   ${briefing.marketTemperature}`)
-  lines.push("")
-
-  // 全球视点
-  lines.push("🌍 全球视点")
-  const globalPerspectives = briefing.globalPerspectives as any[]
-  if (globalPerspectives.length > 0) {
-    globalPerspectives.forEach((item, idx) => {
-      const sourceInfo = getSourceInfo(item)
-      lines.push(`${idx + 1}. ${item.title} ${sourceInfo}`)
-      lines.push(`   💡 ${item.aiSummary || "暂无摘要"}`)
-      lines.push(`   💬 ${item.aiComment || "无点评"}`)
-      lines.push(`   <a href=\"${item.url}\">查看原文</a>`)
-      lines.push("")
-    })
-  } else {
-    lines.push("   暂无")
-    lines.push("")
+  // Market temperature (only in first message)
+  if (withFooter) {
+    lines.push("---")
+    lines.push("由 早8🌞晚8🌛 Ai推送")
   }
-
-  // Footer
-  lines.push("---")
-  lines.push("由 早8🌞晚8🌛 Ai推送")
 
   return lines.join("\n")
 }
@@ -341,54 +391,121 @@ function buildWeComContent(briefing: DailyBriefing): string {
 export async function sendDailyBriefing(): Promise<void> {
   const briefing = await generateDailyBriefing()
 
+  console.log("[Briefing] Generated briefing:", {
+    date: briefing.date,
+    aiDynamics: briefing.aiDynamics.length,
+    financeMarket: briefing.financeMarket.length,
+    globalPerspectives: briefing.globalPerspectives.length,
+    marketTemperature: briefing.marketTemperature,
+  })
+
   // Send to Feishu (card format)
   const FEISHU_WEBHOOK = process.env.FEISHU_WEBHOOK
   if (FEISHU_WEBHOOK) {
     const { myFetch } = await import("../utils/fetch")
     const card = buildFeishuCard(briefing)
 
-    await myFetch(FEISHU_WEBHOOK, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(card),
-    })
-    console.log("[Briefing] Feishu card sent")
+    try {
+      const response = await myFetch(FEISHU_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(card),
+      })
+      console.log("[Briefing] Feishu card sent, response:", response)
+    } catch (error: any) {
+      console.error("[Briefing] Feishu error:", error?.message || error)
+    }
   }
 
-  // Send to Discord (embed format)
-  const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK
-  if (DISCORD_WEBHOOK) {
-    const { myFetch } = await import("../utils/fetch")
-    const embeds = buildDiscordEmbeds(briefing)
-
-    await myFetch(DISCORD_WEBHOOK, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        embeds,
-      }),
-    })
-    console.log("[Briefing] Discord embed sent")
-  }
-
-  // Send to WeCom (markdown_v2 format)
+  // Send to WeCom (markdown_v2 format) - split by category to avoid length limit
   const WECOM_WEBHOOK = process.env.WECOM_WEBHOOK
   if (WECOM_WEBHOOK) {
     const { myFetch } = await import("../utils/fetch")
-    const wecomContent = buildWeComContent(briefing)
+
+    // Send AI Dynamics (max 5 items)
+    if (briefing.aiDynamics.length > 0) {
+      const aiItems = briefing.aiDynamics.slice(0, 5)
+      const aiContent = buildWeComCategoryContent("🤖 AI 动态", aiItems, briefing.date, false)
+      console.log("[Briefing] WeCom AI Dynamics:", aiItems.length, "items, content length:", aiContent.length)
+
+      try {
+        const response = await myFetch(WECOM_WEBHOOK, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            msgtype: "markdown_v2",
+            markdown_v2: { content: aiContent },
+          }),
+        })
+        console.log("[Briefing] WeCom AI Dynamics sent, response:", response)
+      } catch (error: any) {
+        console.error("[Briefing] WeCom AI Dynamics error:", error?.message || error)
+      }
+    }
+
+    // Send Finance Market (max 5 items)
+    if (briefing.financeMarket.length > 0) {
+      const financeItems = briefing.financeMarket.slice(0, 5)
+      const financeContent = buildWeComCategoryContent("💰 财经市场", financeItems, briefing.date, false)
+      console.log("[Briefing] WeCom Finance Market:", financeItems.length, "items, content length:", financeContent.length)
+
+      try {
+        const response = await myFetch(WECOM_WEBHOOK, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            msgtype: "markdown_v2",
+            markdown_v2: { content: financeContent },
+          }),
+        })
+        console.log("[Briefing] WeCom Finance Market sent, response:", response)
+      } catch (error: any) {
+        console.error("[Briefing] WeCom Finance Market error:", error?.message || error)
+      }
+    }
+
+    // Send Global Perspectives (max 5 items)
+    if (briefing.globalPerspectives.length > 0) {
+      const globalItems = briefing.globalPerspectives.slice(0, 5)
+      const globalContent = buildWeComCategoryContent("🌍 全球视点", globalItems, briefing.date, true)
+      console.log("[Briefing] WeCom Global Perspectives:", globalItems.length, "items, content length:", globalContent.length)
+
+      try {
+        const response = await myFetch(WECOM_WEBHOOK, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            msgtype: "markdown_v2",
+            markdown_v2: { content: globalContent },
+          }),
+        })
+        console.log("[Briefing] WeCom Global Perspectives sent, response:", response)
+      } catch (error: any) {
+        console.error("[Briefing] WeCom Global Perspectives error:", error?.message || error)
+      }
+    }
+
+    // Send summary text reminder
+    const summaryContent = `📰 新闻早知道完成！
+AI动态: ${briefing.aiDynamics.length}条
+财经市场: ${briefing.financeMarket.length}条
+全球视点: ${briefing.globalPerspectives.length}条
+
+由 早8🌞晚8🌛 Ai推送`
+    console.log("[Briefing] WeCom summary content length:", summaryContent.length)
 
     try {
       await myFetch(WECOM_WEBHOOK, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          msgtype: "markdown_v2",
-          markdown_v2: { content: wecomContent },
+          msgtype: "text",
+          text: { content: summaryContent },
         }),
       })
-      console.log("[Briefing] WeCom message sent")
+      console.log("[Briefing] WeCom summary sent")
     } catch (error: any) {
-      console.error("[Briefing] WeCom error:", error?.message || error)
+      console.error("[Briefing] WeCom summary error:", error?.message || error)
     }
   }
 
@@ -411,6 +528,7 @@ export async function sendTestBriefing(): Promise<void> {
         aiScore: 95,
         aiSummary: "GPT-5 在推理能力和多模态理解上实现质的飞跃，被视为通向 AGI 的关键一步",
         aiComment: "关注算力赛道",
+        aiCategory: "AI动态",
       },
       {
         id: "2",
@@ -421,16 +539,31 @@ export async function sendTestBriefing(): Promise<void> {
         aiScore: 88,
         aiSummary: "数据中心业务同比增长 400%，AI 芯片供不应求局面将持续至 2027 年",
         aiComment: "持续看好芯片股",
+        aiCategory: "AI动态",
       },
       {
         id: "3",
+        title: "GPT-5 推理能力提升 300%，多模态理解达到新高度",
+        url: "https://openai.com",
+        pubDate: Date.now() - 1800000, // 30 min ago
+        extra: { info: "科技日报" },
+        aiScore: 85,
+        aiSummary: "GPT-5 在复杂推理任务中表现卓越，图像和文本理解能力显著增强",
+        aiComment: "技术突破值得期待",
+        aiCategory: "AI动态",
+      },
+    ] as any,
+    financeMarket: [
+      {
+        id: "6",
         title: "美联储暗示最快 4 月降息，市场情绪转为乐观",
         url: "https://fed.gov",
         pubDate: Date.now() - 1800000, // 30 min ago
         extra: { info: "财联社" },
-        aiScore: 82,
+        aiScore: 85,
         aiSummary: "通胀数据持续降温，鲍威尔释放鸽派信号，风险资产全线上涨",
         aiComment: "关注成长股机会",
+        aiCategory: "财经市场",
       },
     ] as any,
     marketTemperature: "市场情绪高涨，AI 赛道持续领涨，关注算力和应用层机会",
@@ -441,9 +574,10 @@ export async function sendTestBriefing(): Promise<void> {
         url: "https://reuters.com",
         pubDate: Date.now() - 10800000, // 3 hours ago
         extra: { info: "参考消息" },
-        aiScore: 75,
+        aiScore: 85,
         aiSummary: "美国拟对华实施更严格芯片出口限制，国产替代进程加速",
         aiComment: "关注国产替代",
+        aiCategory: "全球视点",
       },
       {
         id: "5",
@@ -451,12 +585,21 @@ export async function sendTestBriefing(): Promise<void> {
         url: "https://eu.gov",
         pubDate: Date.now() - 14400000, // 4 hours ago
         extra: { info: "澎湃新闻" },
-        aiScore: 70,
+        aiScore: 82,
         aiSummary: "全球首个全面 AI 监管框架落地，对大模型训练数据提出更高透明度要求",
         aiComment: "合规成本上升",
+        aiCategory: "全球视点",
       },
     ] as any,
   }
+
+  console.log("[Test] Generated test briefing:", {
+    date: mockBriefing.date,
+    aiDynamics: mockBriefing.aiDynamics.length,
+    financeMarket: mockBriefing.financeMarket.length,
+    globalPerspectives: mockBriefing.globalPerspectives.length,
+    marketTemperature: mockBriefing.marketTemperature,
+  })
 
   // Send to Feishu (card format)
   const FEISHU_WEBHOOK = process.env.FEISHU_WEBHOOK
@@ -479,41 +622,96 @@ export async function sendTestBriefing(): Promise<void> {
     console.log("[Test] FEISHU_WEBHOOK not configured, skipping")
   }
 
-  // Send to Discord
-  const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK
-  if (DISCORD_WEBHOOK) {
-    const { myFetch } = await import("../utils/fetch")
-    const embeds = buildDiscordEmbeds(mockBriefing)
-
-    await myFetch(DISCORD_WEBHOOK, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        embeds,
-      }),
-    })
-    console.log("[Test] Discord embed sent")
-  }
-
-  // Send to WeCom
+  // Send to WeCom (markdown_v2 format) - split by category to avoid length limit
   const WECOM_WEBHOOK = process.env.WECOM_WEBHOOK
   console.log("[Test] WECOM_WEBHOOK:", WECOM_WEBHOOK ? "configured" : "NOT configured")
   if (WECOM_WEBHOOK) {
     const { myFetch } = await import("../utils/fetch")
-    const wecomContent = buildWeComContent(mockBriefing)
+
+    // Send AI Dynamics (max 5 items)
+    if (mockBriefing.aiDynamics.length > 0) {
+      const aiItems = mockBriefing.aiDynamics.slice(0, 5)
+      const aiContent = buildWeComCategoryContent("🤖 AI 动态", aiItems, mockBriefing.date, false)
+      console.log("[Test] WeCom AI Dynamics:", aiItems.length, "items, content length:", aiContent.length)
+
+      try {
+        const response = await myFetch(WECOM_WEBHOOK, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            msgtype: "markdown_v2",
+            markdown_v2: { content: aiContent },
+          }),
+        })
+        console.log("[Test] WeCom AI Dynamics response:", response)
+      } catch (error: any) {
+        console.error("[Test] WeCom AI Dynamics error:", error?.message || error)
+      }
+    }
+
+    // Send Finance Market (max 5 items)
+    if (mockBriefing.financeMarket.length > 0) {
+      const financeItems = mockBriefing.financeMarket.slice(0, 5)
+      const financeContent = buildWeComCategoryContent("💰 财经市场", financeItems, mockBriefing.date, false)
+      console.log("[Test] WeCom Finance Market:", financeItems.length, "items, content length:", financeContent.length)
+
+      try {
+        const response = await myFetch(WECOM_WEBHOOK, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            msgtype: "markdown_v2",
+            markdown_v2: { content: financeContent },
+          }),
+        })
+        console.log("[Test] WeCom Finance Market response:", response)
+      } catch (error: any) {
+        console.error("[Test] WeCom Finance Market error:", error?.message || error)
+      }
+    }
+
+    // Send Global Perspectives (max 5 items)
+    if (mockBriefing.globalPerspectives.length > 0) {
+      const globalItems = mockBriefing.globalPerspectives.slice(0, 5)
+      const globalContent = buildWeComCategoryContent("🌍 全球视点", globalItems, mockBriefing.date, true)
+      console.log("[Test] WeCom Global Perspectives:", globalItems.length, "items, content length:", globalContent.length)
+
+      try {
+        const response = await myFetch(WECOM_WEBHOOK, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            msgtype: "markdown_v2",
+            markdown_v2: { content: globalContent },
+          }),
+        })
+        console.log("[Test] WeCom Global Perspectives response:", response)
+      } catch (error: any) {
+        console.error("[Test] WeCom Global Perspectives error:", error?.message || error)
+      }
+    }
+
+    // Send summary text reminder
+    const summaryContent = `📰 新闻早知道完成！
+AI动态: ${mockBriefing.aiDynamics.length}条
+财经市场: ${mockBriefing.financeMarket.length}条
+全球视点: ${mockBriefing.globalPerspectives.length}条
+
+由 早8🌞晚8🌛 Ai推送`
+    console.log("[Test] WeCom summary content length:", summaryContent.length)
 
     try {
       await myFetch(WECOM_WEBHOOK, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          msgtype: "markdown_v2",
-          markdown_v2: { content: wecomContent },
+          msgtype: "text",
+          text: { content: summaryContent },
         }),
       })
-      console.log("[Test] WeCom message sent")
+      console.log("[Test] WeCom summary sent")
     } catch (error: any) {
-      console.error("[Test] WeCom error:", error?.message || error)
+      console.error("[Test] WeCom summary error:", error?.message || error)
     }
   } else {
     console.log("[Test] WECOM_WEBHOOK not configured, skipping")

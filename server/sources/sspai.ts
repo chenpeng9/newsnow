@@ -16,6 +16,7 @@ export default defineSource(async () => {
       id: k.id,
       title: k.title,
       url,
+      extra: { info: "少数派" },
     }
   })
 })

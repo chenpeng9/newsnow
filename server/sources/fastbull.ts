@@ -19,6 +19,7 @@ const express = defineSource(async () => {
         title: title.length < 4 ? titleText : title,
         id: url,
         pubDate: Number(date),
+        extra: { info: "法布财经" },
       })
     }
   })

@@ -21,6 +21,7 @@ const quick = defineSource(async () => {
         title,
         id: url,
         extra: {
+          info: "36氪",
           date: parseRelativeDate(relativeDate, "Asia/Shanghai").valueOf(),
         },
       })
@@ -73,8 +74,8 @@ const renqi = defineSource(async () => {
         id: href.slice(3), // 简化处理
         // url.slice(url.lastIndexOf("/") + 1)
         extra: {
-          info: `${author}  |  ${hot}`,
-          hover: description,
+          info: "36氪",
+          hover: `${author}  |  ${hot}`,
         },
       })
     }

@@ -16,6 +16,7 @@ export default defineSource(async () => {
       id: k.content.content_id,
       title: k.content.title,
       url,
+      extra: { info: "稀土掘金" },
     }
   })
 })

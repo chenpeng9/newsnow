@@ -16,6 +16,7 @@ export default defineSource(async () => {
     id: k.data.id,
     title: k.data.title,
     extra: {
+      info: "参考消息",
       date: tranformToUTC(k.data.publishTime),
     },
     url: k.data.url,

@@ -41,7 +41,7 @@ export default defineSource(async () => {
       url: `https://flash.jin10.com/detail/${k.id}`,
       extra: {
         hover: desc,
-        info: !!k.important && "✰",
+        info: "金十数据",
       },
     }
   })

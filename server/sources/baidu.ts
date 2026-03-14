@@ -22,6 +22,7 @@ export default defineSource(async () => {
       title: k.word,
       url: k.rawUrl,
       extra: {
+        info: "百度热搜",
         hover: k.desc,
       },
     }

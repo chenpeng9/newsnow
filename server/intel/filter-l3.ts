@@ -1,12 +1,15 @@
 import type { NewsItem } from "~/shared/types"
 import { scoreWithAI } from "../utils/llm"
 
-const HIGH_VALUE_THRESHOLD = 80
+const HIGH_VALUE_THRESHOLD = 70
+
+export type AICategory = "AI动态" | "财经市场" | "全球视点"
 
 export interface ScoredItem extends NewsItem {
   aiScore: number
   aiSummary?: string
   aiComment?: string
+  aiCategory?: AICategory
 }
 
 /**
@@ -20,12 +23,13 @@ export async function scoreItems(items: NewsItem[]): Promise<ScoredItem[]> {
   for (let i = 0; i < items.length; i++) {
     const item = items[i]
     try {
-      const { score, summary, comment } = await scoreWithAI(item.title, item.url)
+      const { score, summary, comment, category } = await scoreWithAI(item.title, item.url)
       results.push({
         ...item,
         aiScore: score,
         aiSummary: summary,
         aiComment: comment,
+        aiCategory: category,
       })
 
       // Log progress every 10 items
@@ -39,6 +43,7 @@ export async function scoreItems(items: NewsItem[]): Promise<ScoredItem[]> {
         aiScore: 0,
         aiSummary: "无法生成摘要",
         aiComment: "无点评",
+        aiCategory: undefined,
       })
     }
   }
@@ -47,7 +52,7 @@ export async function scoreItems(items: NewsItem[]): Promise<ScoredItem[]> {
 }
 
 /**
- * Get high value items (score > 80)
+ * Get high value items (score >= 70)
  */
 export function getHighValueItems(items: ScoredItem[]): ScoredItem[] {
   return items.filter((item) => item.aiScore >= HIGH_VALUE_THRESHOLD)

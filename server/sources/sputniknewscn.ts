@@ -19,6 +19,7 @@ const source = defineSource(async () => {
         title,
         id: url,
         extra: {
+          info: "卫星通讯社",
           date: new Date(Number(`${date}000`)).getTime(),
         },
       })

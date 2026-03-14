@@ -18,6 +18,7 @@ export default defineSource(async () => {
         url: hotNews.url,
         title: hotNews.title,
         extra: {
+          info: "凤凰网",
           date: hotNews.newsTime,
         },
       })

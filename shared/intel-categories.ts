@@ -11,10 +11,13 @@ export const intelCategories = {
     interval: 30 * 60 * 1000, // 30 min
     sources: [
       // Financial - Core
-      "jin10",           // 金十数据 - 金融快讯
+      "sputniknewscn",  // 卫星通讯社
       "wallstreetcn-hot", // 华尔街见闻 - 热门
       "cls-depth",       // 财联社 - 深度
-      "fastbull-express", // 法布财经 - 快讯
+      "ifeng",          // 凤凰网
+      "thepaper",       // 澎湃新闻
+      "tencent-hot",    // 腾讯新闻
+      "juejin",         // 稀土掘金
     ],
   },
   B: {
@@ -22,13 +25,13 @@ export const intelCategories = {
     weight: 0.8,
     interval: 2 * 60 * 60 * 1000, // 2 hr
     sources: [
+      "jin10",           // 金十数据 - 金融快讯
       "cls-hot",         // 财联社 - 热门
       "36kr-quick",     // 36氪 - 快讯
-      "cankaoxiaoxi",   // 参考消息
-      "sputniknewscn",  // 卫星通讯社
-      "ifeng",          // 凤凰网
-      "thepaper",       // 澎湃新闻
       "wallstreetcn-quick", // 华尔街见闻 - 快讯
+      "fastbull-express", // 法布财经 - 快讯
+      "cankaoxiaoxi",   // 参考消息
+
     ],
   },
   C: {
@@ -51,7 +54,6 @@ export const intelCategories = {
     sources: [
       "ithome",         // IT之家
       "sspai",         // 少数派
-      "juejin",        // 稀土掘金
       "solidot",       // Solidot
     ],
   },

@@ -39,6 +39,7 @@ const depth = defineSource(async () => {
       mobileUrl: k.shareurl,
       pubDate: k.ctime * 1000,
       url: `https://www.cls.cn/detail/${k.id}`,
+      extra: { info: "财联社" },
     }
   })
 })
@@ -54,6 +55,7 @@ const hot = defineSource(async () => {
       title: k.title || k.brief,
       mobileUrl: k.shareurl,
       url: `https://www.cls.cn/detail/${k.id}`,
+      extra: { info: "财联社" },
     }
   })
 })
@@ -70,6 +72,7 @@ const telegraph = defineSource(async () => {
       mobileUrl: k.shareurl,
       pubDate: k.ctime * 1000,
       url: `https://www.cls.cn/detail/${k.id}`,
+      extra: { info: "财联社" },
     }
   })
 })

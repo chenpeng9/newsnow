@@ -43,14 +43,14 @@ export async function processIntel(items: NewsItem[]): Promise<ScoredItem[]> {
   console.log(`[Filter] L3: Done. Scored: ${l3Scored.length} items`)
 
   // Summary
-  const highValue = l3Scored.filter((i) => i.aiScore >= 80).length
-  console.log(`[Filter] ========== Done! High-value (>=80): ${highValue} ==========`)
+  const highValue = l3Scored.filter((i) => i.aiScore >= 70).length
+  console.log(`[Filter] ========== Done! High-value (>=70): ${highValue} ==========`)
 
   return l3Scored
 }
 
 /**
- * Get high value items that should trigger alerts (score >= 80)
+ * Get high value items that should trigger alerts (score >= 70)
  */
 export async function getAlertItems(
   items: NewsItem[]

@@ -43,6 +43,7 @@ export default defineSource(async () => {
           url: `${baseurl}${href}`,
           mobileUrl: `${baseurl}${href}`,
           extra: {
+            info: "微博热搜",
             icon: flagUrl ? { url: flagUrl, scale: 1.5 } : undefined,
           },
         })

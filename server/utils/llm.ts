@@ -55,13 +55,13 @@ export async function callLLM(
 /**
  * Generate AI score and summary for a single news item
  * Fetches article content first, then scores using both title and content
- * Returns score (0-100), summary (100 chars), and comment (20 chars)
+ * Returns score (0-100), summary (100 chars), comment (20 chars), and category
  */
 export async function scoreWithAI(
   title: string,
   url: string,
   options: { fetchContent?: boolean } = {}
-): Promise<{ score: number; summary: string; comment: string }> {
+): Promise<{ score: number; summary: string; comment: string; category?: "AI动态" | "财经市场" | "全球视点" }> {
   const fetchContent = options.fetchContent !== false // default to true
 
   // Fetch article content for better scoring
@@ -93,9 +93,14 @@ export async function scoreWithAI(
 - 是否影响社会生产力结构或全球供应链？
 - 评分：区域性小新闻 0-10 分；影响全球政经大势的节点性事件 25-30 分。
 
+分类标准：
+- AI动态：涉及 AI 产业链、模型更新、芯片、算力、应用落地、AGI、大模型等
+- 财经市场：涉及宏观经济、降息/加息、美联储、财报、股市、通胀、投资建议等
+- 全球视点：涉及国际局势、地缘冲突、大国博弈、全球政策、国际关系等
+
 返回格式要求：
 请严格按照以下JSON格式返回，不要有任何额外文字：
-{"score": 85, "summary": "150字左右的摘要，说明这条信息的核心价值和意义", "comment": "30字以内的简短点评或行动建议"}`
+{"score": 85, "summary": "150字左右的摘要，说明这条信息的核心价值和意义", "comment": "30字以内的简短点评或行动建议", "category": "AI动态"}`
 
   // Build user prompt with or without content
   let userPrompt = `标题：${title}\n链接：${url}`
@@ -121,13 +126,14 @@ export async function scoreWithAI(
     const score = parseInt(String(parsed.score), 10)
     const summary = (parsed.summary || "").slice(0, 200)
     const comment = (parsed.comment || "").slice(0, 30)
+    const category = parsed.category as "AI动态" | "财经市场" | "全球视点" | undefined
 
     if (Number.isNaN(score) || score < 0 || score > 100) {
       console.error("[LLM] Invalid score response:", result)
       return { score: 0, summary: "无法生成摘要", comment: "无点评" }
     }
 
-    return { score, summary, comment }
+    return { score, summary, comment, category }
   } catch (error) {
     console.error("[LLM] Failed to score item:", error)
     return { score: 0, summary: "无法生成摘要", comment: "无点评" }

@@ -44,8 +44,8 @@ export default defineSource({
           id: k.target.link.url.match(/(\d+)$/)?.[1] ?? k.target.link.url,
           title: k.target.title_area.text,
           extra: {
-            info: k.target.metrics_area.text,
-            hover: k.target.excerpt_area.text,
+            info: "知乎",
+            hover: `${k.target.metrics_area.text} · ${k.target.excerpt_area.text}`,
           },
           url: k.target.link.url,
         }
