@@ -12,6 +12,9 @@ const BRIEFING_TIMES = [
 ]
 const CONCURRENCY_LIMIT = 5 // Max concurrent source fetches
 
+// Freshness filter: only push news published within last 12 hours
+const FRESHNESS_WINDOW_MS = 12 * 60 * 60 * 1000 // 12 hours in milliseconds
+
 interface DailyBriefing {
   date: string
   aiDynamics: ScoredItem[]
@@ -87,10 +90,25 @@ export async function generateDailyBriefing(): Promise<DailyBriefing> {
   // Sort by score
   const sorted = [...scored].sort((a, b) => b.aiScore - a.aiScore)
 
-  // Select items by AI category with score >= 85
-  const aiDynamics = sorted.filter((item) => item.aiScore >= 85 && item.aiCategory === "AI动态")
-  const financeMarket = sorted.filter((item) => item.aiScore >= 85 && item.aiCategory === "财经市场")
-  const globalPerspectives = sorted.filter((item) => item.aiScore >= 85 && item.aiCategory === "全球视点")
+  // Filter by freshness (within last 12 hours) before AI category filter
+  const now = Date.now()
+  const freshItems = sorted.filter((item) => {
+    const publishTime = item.pubDate || item.extra?.date
+    if (!publishTime) return false
+    // Try to parse date from various formats
+    const publishDate = typeof publishTime === 'string'
+      ? new Date(publishTime).getTime()
+      : (publishTime as number) || 0
+
+    return now - publishDate <= FRESHNESS_WINDOW_MS
+  })
+
+  console.log(`[Briefing] Freshness filter: ${sorted.length} → ${freshItems.length} items (removed ${sorted.length - freshItems.length} old news)`)
+
+  // Select items by AI category with score >= 85 (from fresh items only)
+  const aiDynamics = freshItems.filter((item) => item.aiScore >= 85 && item.aiCategory === "AI动态")
+  const financeMarket = freshItems.filter((item) => item.aiScore >= 85 && item.aiCategory === "财经市场")
+  const globalPerspectives = freshItems.filter((item) => item.aiScore >= 85 && item.aiCategory === "全球视点")
   const marketTemperature = generateMarketSummary(sorted)
 
   return {
@@ -385,7 +403,7 @@ function buildWeComCategoryContent(
   // Market temperature (only in first message)
   if (withFooter) {
     lines.push("---")
-    lines.push("由 早8🌞晚8🌛 Ai推送")
+    lines.push("由 早8🌞晚8🌛 AI推送")
   }
 
   return lines.join("\n")
@@ -428,9 +446,9 @@ export async function sendDailyBriefing(): Promise<void> {
   if (WECOM_WEBHOOK) {
     const { myFetch } = await import("../utils/fetch")
 
-    // Send AI Dynamics (max 5 items)
+    // Send AI Dynamics (no limit)
     if (briefing.aiDynamics.length > 0) {
-      const aiItems = briefing.aiDynamics.slice(0, 5)
+      const aiItems = briefing.aiDynamics
       const aiContent = buildWeComCategoryContent("🤖 AI 动态", aiItems, briefing.date, false)
       console.log("[Briefing] WeCom AI Dynamics:", aiItems.length, "items, content length:", aiContent.length)
 
@@ -449,9 +467,9 @@ export async function sendDailyBriefing(): Promise<void> {
       }
     }
 
-    // Send Finance Market (max 5 items)
+    // Send Finance Market (no limit)
     if (briefing.financeMarket.length > 0) {
-      const financeItems = briefing.financeMarket.slice(0, 5)
+      const financeItems = briefing.financeMarket
       const financeContent = buildWeComCategoryContent("💰 财经市场", financeItems, briefing.date, false)
       console.log("[Briefing] WeCom Finance Market:", financeItems.length, "items, content length:", financeContent.length)
 
@@ -470,9 +488,9 @@ export async function sendDailyBriefing(): Promise<void> {
       }
     }
 
-    // Send Global Perspectives (max 5 items)
+    // Send Global Perspectives (no limit)
     if (briefing.globalPerspectives.length > 0) {
-      const globalItems = briefing.globalPerspectives.slice(0, 5)
+      const globalItems = briefing.globalPerspectives
       const globalContent = buildWeComCategoryContent("🌍 全球视点", globalItems, briefing.date, true)
       console.log("[Briefing] WeCom Global Perspectives:", globalItems.length, "items, content length:", globalContent.length)
 
@@ -502,7 +520,7 @@ AI动态: ${aiPushed}条
 财经市场: ${financePushed}条
 全球视点: ${globalPushed}条
 
-由 早8晚8💰 Ai推送`
+由 早8晚8💰 AI推送`
     console.log("[Briefing] WeCom summary content length:", summaryContent.length)
 
     try {
@@ -681,9 +699,9 @@ export async function sendTestBriefing(): Promise<void> {
       }
     }
 
-    // Send Global Perspectives (max 5 items)
+    // Send Global Perspectives (no limit)
     if (mockBriefing.globalPerspectives.length > 0) {
-      const globalItems = mockBriefing.globalPerspectives.slice(0, 5)
+      const globalItems = mockBriefing.globalPerspectives
       const globalContent = buildWeComCategoryContent("🌍 全球视点", globalItems, mockBriefing.date, true)
       console.log("[Test] WeCom Global Perspectives:", globalItems.length, "items, content length:", globalContent.length)
 
@@ -713,7 +731,7 @@ AI动态: ${aiPushed}条
 财经市场: ${financePushed}条
 全球视点: ${globalPushed}条
 
-由 早8晚8💰 Ai推送`
+由 早8晚8💰 AI推送`
     console.log("[Test] WeCom summary content length:", summaryContent.length)
 
     try {
